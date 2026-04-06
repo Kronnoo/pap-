@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>¡Feliz Cumpleaños, Papá!</title>
+    <style>
+        :root {
+            --bg: #0b0f1a;
+            --accent: #38bdf8;
+            --gold: #f1c40f;
+            --psg-blue: #004170;
+            --psg-red: #da291c;
+        }
+
+        body, html {
+            margin: 0; padding: 0;
+            width: 100%; height: 100%;
+            font-family: 'Segoe UI', sans-serif;
+            background-color: var(--bg);
+            color: white;
+            overflow: hidden; 
+            touch-action: none;
+        }
+
+        .screen {
+            position: absolute; width: 100%; height: 100%;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            transition: opacity 0.5s ease; z-index: 10;
+        }
+
+        #game-screen { display: none; opacity: 0; background: #0f172a; }
+        #final-screen { display: none; opacity: 0; overflow-y: auto; justify-content: flex-start; padding-top: 30px; touch-action: auto; }
+
+        /* JUEGO */
+        #game-canvas {
+            border: 3px solid var(--psg-blue);
+            background: rgba(255,255,255,0.03);
+            border-radius: 10px;
+            max-width: 95%;
+        }
+
+        .score-board {
+            margin-bottom: 10px; font-size: 1.5rem;
+            background: rgba(0,0,0,0.7); padding: 8px 20px;
+            border-radius: 50px; border: 2px solid var(--gold);
+        }
+
+        /* MODALES */
+        #unlock-modal, #tablet-modal {
+            display: none; position: fixed; top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            background: #1e293b; padding: 30px; border-radius: 20px;
+            border: 4px solid var(--gold); text-align: center; z-index: 100;
+            width: 85%; max-width: 350px;
+            box-shadow: 0 0 50px rgba(0,0,0,0.8);
+        }
+
+        /* GALERÍA */
+        .photo-viewer {
+            width: 300px; height: 380px;
+            border: 10px solid white;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+            cursor: pointer;
+            position: relative;
+            background: #000;
+            margin-bottom: 10px;
+            flex-shrink: 0;
+        }
+
+        .photo-viewer img {
+            width: 100%; height: 100%;
+            object-fit: cover;
+            transition: opacity 0.3s ease;
+        }
+
+        .photo-counter {
+            background: rgba(0,0,0,0.6);
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            margin-bottom: 20px;
+        }
+
+        /* TEXTO */
+        #typing-container {
+            width: 85%; max-width: 600px; margin: 20px auto;
+            background: rgba(255,255,255,0.05); padding: 25px;
+            border-radius: 15px; line-height: 1.6; font-size: 1.1rem;
+            border-left: 6px solid var(--psg-red); text-align: justify;
+        }
+
+        button {
+            padding: 15px 30px; font-size: 1.1rem;
+            background: var(--psg-blue); color: white;
+            border: none; border-radius: 50px; cursor: pointer;
+            font-weight: bold; transition: 0.3s;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .emoji { position: fixed; top: -50px; opacity: 0.2; animation: fall linear forwards; z-index: 1; }
+        @keyframes fall { to { transform: translateY(105vh) rotate(360deg); } }
+        @keyframes blink { 50% { opacity: 0; } }
+    </style>
+</head>
+<body>
+
+    <div id="intro-screen" class="screen">
+        <h1 style="color:var(--gold); font-size: 2.5rem; text-align: center;">¡Hola, Pa!</h1>
+        <p style="text-align: center; padding: 0 20px;">Atrapa 10 balones para ver tu sorpresa.<br>¡Cuidado con las 🚩!</p>
+        <button onclick="mostrarJuego()" style="background: var(--psg-red);">ENTRAR </button>
+    </div>
+
+    <div id="game-screen" class="screen">
+        <div class="score-board">Puntos: <span id="score">0</span> / 10</div>
+        <canvas id="game-canvas"></canvas>
+        <button id="btn-play" onclick="iniciarLogicaJuego()" style="margin-top: 20px; background: var(--gold); color: black;">¡DAR PLAY!</button>
+    </div>
+
+    <div id="unlock-modal">
+        <h2 style="color:var(--gold)">¡MVP! 🏆</h2>
+        <p>Has ganado tu sorpresa.</p>
+        <button onclick="verRegalo()">VER REGALO</button>
+    </div>
+
+    <div id="final-screen" class="screen">
+        <div class="photo-viewer" onclick="cambiarFoto()">
+            <img id="main-photo" src="" alt="Foto Familiar">
+        </div>
+        <div class="photo-counter">Foto <span id="current-num">1</span> de 25</div>
+        <p style="color: var(--accent); font-size: 0.8rem; margin-top: -10px; margin-bottom: 20px;">(Toca la foto para pasar a la siguiente)</p>
+        
+        <div id="typing-container">
+            <span id="text-target"></span><span style="border-left:3px solid var(--gold); animation:blink 0.7s infinite"></span>
+        </div>
+    </div>
+
+    <div id="tablet-modal">
+        <div style="font-size: 2.5rem;">📩</div>
+        <h2 style="color:var(--accent)">¡Mensaje Nuevo!</h2>
+        <p style="font-weight: bold;">"Esto es un vale por una tablet sorpresa, estate atento."</p>
+        <canvas id="canvas-vale" width="400" height="250" style="display:none;"></canvas>
+        <button onclick="descargarVale()" style="background:var(--gold); color:black; width: 100%;">DESCARGAR VALE</button>
+    </div>
+
+    <script>
+        const imgPapaSrc = "https://images2.imgbox.com/71/39/i47o2kXm_o.png";
+        const imgBalonSrc = "https://images2.imgbox.com/39/64/Xj7ZlR28_o.png";
+        
+        // LISTA AJUSTADA SEGÚN TU IMAGEN
+        const fotos = [
+            "image.png",
+            "image copy.png",
+            "image copy 2.png", "image copy 3.png", "image copy 4.png", "image copy 5.png",
+            "image copy 6.png", "image copy 7.png", "image copy 8.png", "image copy 9.png",
+            "image copy 10.png", "image copy 11.png", "image copy 12.png", "image copy 13.png",
+            "image copy 14.png", "image copy 15.png", "image copy 16.png", "image copy 17.png",
+            "image copy 18.png", "image copy 19.png", "image copy 20.png", "image copy 21.png",
+            "image copy 22.png", "image copy 23.png", "image copy 24.png", "image copy 25.png"
+        ];
+        
+        let currentIdx = 0;
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
+        let score = 0;
+        let gameRunning = false;
+        let papaPos = { x: 0, y: 0, w: 70, h: 90 };
+        let items = [];
+
+        const imgP = new Image(); imgP.src = imgPapaSrc;
+        const imgB = new Image(); imgB.src = imgBalonSrc;
+
+        function mostrarJuego() {
+            document.getElementById('intro-screen').style.display = 'none';
+            document.getElementById('game-screen').style.display = 'flex';
+            document.getElementById('game-screen').style.opacity = 1;
+            canvas.width = window.innerWidth * 0.95;
+            canvas.height = window.innerHeight * 0.6;
+            papaPos.x = canvas.width / 2 - 35;
+            papaPos.y = canvas.height - 100;
+        }
+
+        function iniciarLogicaJuego() {
+            document.getElementById('btn-play').style.display = 'none';
+            gameRunning = true;
+            actualizarJuego();
+        }
+
+        canvas.addEventListener('touchmove', (e) => {
+            if(!gameRunning) return;
+            e.preventDefault();
+            let touch = e.touches[0];
+            let rect = canvas.getBoundingClientRect();
+            papaPos.x = touch.clientX - rect.left - (papaPos.w / 2);
+            if(papaPos.x < 0) papaPos.x = 0;
+            if(papaPos.x > canvas.width - papaPos.w) papaPos.x = canvas.width - papaPos.w;
+        }, {passive: false});
+
+        function actualizarJuego() {
+            if(!gameRunning) return;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(imgP, papaPos.x, papaPos.y, papaPos.w, papaPos.h);
+
+            if(Math.random() < 0.04) {
+                const isBall = Math.random() > 0.4;
+                items.push({ 
+                    x: Math.random() * (canvas.width - 40), 
+                    y: -40, 
+                    type: isBall ? 'ball' : 'enemy',
+                    speed: isBall ? 3 : 5 
+                });
+            }
+
+            for(let i = items.length - 1; i >= 0; i--) {
+                items[i].y += items[i].speed;
+                if(items[i].type === 'ball') ctx.drawImage(imgB, items[i].x, items[i].y, 40, 40);
+                else { ctx.font = "30px serif"; ctx.fillText("🚩", items[i].x, items[i].y + 30); }
+
+                if(items[i].y + 35 > papaPos.y && items[i].x < papaPos.x + papaPos.w && items[i].x + 35 > papaPos.x) {
+                    if(items[i].type === 'ball') score++;
+                    else score = Math.max(0, score - 2);
+                    items.splice(i, 1);
+                    document.getElementById('score').innerText = score;
+                    if(score >= 10) { gameRunning = false; document.getElementById('unlock-modal').style.display = 'block'; }
+                } else if(items[i].y > canvas.height) items.splice(i, 1);
+            }
+            requestAnimationFrame(actualizarJuego);
+        }
+
+        function verRegalo() {
+            document.getElementById('unlock-modal').style.display = 'none';
+            document.getElementById('game-screen').style.display = 'none';
+            const final = document.getElementById('final-screen');
+            final.style.display = 'flex';
+            setTimeout(() => final.style.opacity = 1, 100);
+            
+            document.getElementById('main-photo').src = fotos[0];
+            document.body.style.overflowY = 'auto';
+            document.body.style.touchAction = 'auto';
+            iniciarLluvia();
+            escribirMensaje();
+        }
+
+        function cambiarFoto() {
+            currentIdx = (currentIdx + 1) % fotos.length;
+            const img = document.getElementById('main-photo');
+            img.style.opacity = 0.4;
+            setTimeout(() => {
+                img.src = fotos[currentIdx];
+                document.getElementById('current-num').innerText = currentIdx + 1;
+                img.style.opacity = 1;
+            }, 150);
+        }
+
+        const mensaje = "Gracias por los sacrificios que hiciste sin que yo me diera cuenta. Eres la única persona que me ha conocido desde el primer día... Me viste crecer, caer, levantarme, fallar y volver a intentar. Trabajaste años para darme lo que necesitaba, y muchas veces renunciaste a lo que tú querías para que a mí, no me faltara nada. No siempre lo digo, no siempre sé valorarlo, pero conforme voy creciendo, voy entendiendo todo lo que haces sin esperar nada a cambio. Eres mi ejemplo, mi fuerza, el que siempre está, aunque no siempre se hiciera evidente con palabras, porque así eres tú. Hechos, no palabras, y eso significa que te debo todo... aunque nunca me lo vayas a cobrar. Te amamos papá... ¡Feliz cumpleaños!";
+
+        let charIdx = 0;
+        function escribirMensaje() {
+            if (charIdx < mensaje.length) {
+                document.getElementById("text-target").innerHTML += mensaje.charAt(charIdx);
+                charIdx++;
+                setTimeout(escribirMensaje, 45);
+                if(charIdx % 4 === 0) window.scrollTo(0, document.body.scrollHeight);
+            } else {
+                setTimeout(() => { document.getElementById('tablet-modal').style.display = 'block'; }, 1500);
+            }
+        }
+
+        function descargarVale() {
+            const v = document.getElementById('canvas-vale');
+            const vx = v.getContext('2d');
+            vx.fillStyle = "#004170"; vx.fillRect(0,0,400,250);
+            vx.strokeStyle = "#f1c40f"; vx.lineWidth = 10; vx.strokeRect(5,5,390,240);
+            vx.fillStyle = "white"; vx.font = "bold 20px Arial"; vx.textAlign = "center";
+            vx.fillText("VALE OFICIAL POR:", 200, 60);
+            vx.fillStyle = "#f1c40f"; vx.font = "bold 35px Arial";
+            vx.fillText("UNA TABLET", 200, 120);
+            vx.fillStyle = "white"; vx.font = "16px Arial";
+            vx.fillText("De parte de tu familia que te ama.", 200, 180);
+            vx.font = "italic 14px Arial";
+            vx.fillText("Canjeable pronto... ¡Atento!", 200, 210);
+            const link = document.createElement('a');
+            link.download = 'Vale_Tablet_Papa.png';
+            link.href = v.toDataURL();
+            link.click();
+        }
+
+        function iniciarLluvia() {
+            setInterval(() => {
+                const e = document.createElement('div'); e.className = 'emoji';
+                e.innerText = ['💙','⚽','🏎️','🥋','✨'][Math.floor(Math.random()*5)];
+                e.style.left = Math.random()*100+'vw'; e.style.animationDuration = (Math.random()*2+3)+'s';
+                document.body.appendChild(e); setTimeout(() => e.remove(), 5000);
+            }, 500);
+        }
+    </script>
+</body>
+</html>
